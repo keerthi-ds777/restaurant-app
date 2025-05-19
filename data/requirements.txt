@@ -1,0 +1,35 @@
+pandas 
+json
+folium 
+string
+requests
+scikit-learn
+load_dotenv
+google.generativeai
+os
+
+
+    # Display results
+    st.markdown("### 🎉 Recommended Restaurants")
+    for idx, row in new_df.iterrows():
+        with st.container():
+            st.markdown(f"#### {row['Name']}")
+            if 'Photo_urls' in row and pd.notna(row['Photo_urls']):
+                st.image(row['Photo_urls'], width=300)
+            st.markdown(f"**Address:** {row['Address']}")
+            
+            # Find Location Button
+            if st.button(f"📍 Find Location", key=f"btn_{idx}"):
+                coords = find_geocode_adress(row['Address'], os.getenv('LOCATIONIQ_API_KEY'))
+                if coords:
+                    st.session_state.map_data = {
+                        "lat": coords[0],
+                        "lon": coords[1],
+                        "name": row['Name'],
+                        "address": row['Address']
+                    }
+                    st.session_state.page = "map"
+                    st.experimental_rerun()
+                else:
+                    st.error("Failed to fetch coordinates.")
+            st.markdown("---")

@@ -1,0 +1,131 @@
+# === OS ===
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# === IDEs / Editors ===
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.manifest
+*.spec
+pip-wheel-metadata/
+.venv/
+env/
+venv/
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints
+
+# === Node.js ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnpm-debug.log*
+
+# === Logs & Temp Files ===
+*.log
+*.tmp
+*.bak
+*.swp
+*.lock
+*.orig
+
+# === Environments / Secrets ===
+.env
+.env.*
+.envrc
+.secret
+secrets.yml
+
+# === Databases / Caches ===
+*.sqlite3
+*.db
+*.pid
+*.sql
+*.dump
+
+# === Compiled / Binary Files ===
+*.exe
+*.dll
+*.out
+*.obj
+*.class
+*.o
+*.a
+*.so
+*.lib
+
+# === Archives ===
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# === macOS Spotlight / Trash ===
+.Spotlight-V100
+.Trashes
+
+# === Windows Folder Config ===
+$RECYCLE.BIN/
+
+# === Git Backup Files ===
+*.orig
+
+# === Jekyll / Hugo ===
+_site/
+public/
+
+# === JetBrains Rider & Unity ===
+*.user
+*.userprefs
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.pidb
+*.booproj
+*.svd
+
+# === Coverage / Testing ===
+.coverage
+.tox/
+.nox/
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# === MyPy / Type Checking ===
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# === Lint / Formatter ===
+.cache/
+.prettiercache
+.eslintcache
+
+# === Docker ===
+*.container
+*.pid
+docker-compose.override.yml
+
+# === Misc ===
+!.gitignore
