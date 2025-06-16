@@ -1,0 +1,10 @@
+pandas
+folium
+requests
+scikit-learn
+python-dotenv
+google-generativeai
+pymysql
+sqlalchemy
+matplotlib
+numpy
