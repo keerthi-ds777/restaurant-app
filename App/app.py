@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
 import os
-from map import map_page
+from new import map_page_2
 import joblib
 import webbrowser
 import numpy as np
@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 import os
 from sqlalchemy import create_engine
 import streamlit as st
-from map import map_page
+
 
 # Initialize session state for page navigation
 if "page" not in st.session_state:
@@ -267,18 +267,10 @@ if predict:
             if 'URL' in row and pd.notna(row['URL']):
                 st.markdown(f"[Visit Website]({row['URL']})", unsafe_allow_html=True)
             
-            if st.button(f"📍 Find Location", key=f"btn_{idx}"):
-                st.session_state.page = "map"
-                st.session_state.map_lat = row['Latitude']
-                st.session_state.map_lon = row['Longitude']
-                st.session_state.map_name = row['Name']
-                st.experimental_rerun()
+            
                 
                         
     
-
-
-
     st.markdown("### Recommended Restaurants")
     
 # Display the filtered DataFrame
