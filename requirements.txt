@@ -8,3 +8,5 @@ pymysql
 sqlalchemy
 matplotlib
 numpy
+streamlit
+streamlit-folium

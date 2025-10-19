@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
-import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
 import os
-from new import map_page_2
 import joblib
 import webbrowser
 import numpy as np
@@ -21,12 +19,7 @@ import streamlit as st
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-if st.session_state.get("page") == "map":
-    map_page(
-        st.session_state.get("map_lat"),
-        st.session_state.get("map_lon"),
-        st.session_state.get("map_name", "Selected Location")
-    )
+
     st.stop()
 load_dotenv()
 
@@ -52,8 +45,9 @@ st.set_page_config(
 
 
 dfd = pd.read_sql('select * from clustered_data', con=engine)
-df = pd.read_sql('select * from encoded_data', con=engine)
-dfc = pd.read_sql('select * from restaurant_features', con=engine)
+df = pd.read_sql('select * from processed_features', con=engine)
+dfc = pd.read_sql('select * from features_for_model', con=engine)
+
 
 
 dfc['Clusters'] = dfd['Cluster']
@@ -164,6 +158,7 @@ rating = st.sidebar.selectbox("⭐ Kind of rating would you prefer", options=rat
 rating_v = rating
 rating = rating_dic[rating]
 
+
 price_range = st.sidebar.slider(
     "💰 Price Range", 
     max_value=4, 
@@ -187,12 +182,13 @@ price_range_value = sum(price_range) / len(price_range)  # Calculate the average
 
 # Create the input array with consistent numeric values
 input_arry = np.array([
-    cusine, location, rating, price_range_value, online_delivery, tabel_booking, avg_cost_two
+     cusine,location, rating, price_range_value, online_delivery, tabel_booking, avg_cost_two
 ], dtype=float)  # Ensure all elements are numeric
 input_arry = input_arry.reshape(1, -1)
 # Assuming the model was trained with these feature names
-feature_names = ['Cuisines', 'City', 'Rating_text', 'Price Range', 
-                 'Online Delivery', 'Table Booking', 'Average Cost for Two']
+feature_names = ['Cuisines', 'City', 'Rating',
+                 'Price Range', 'Online Delivery',
+                 'Table Booking', 'Average Cost for Two'] # adjust as needed
 
 # Convert input_arry to a DataFrame with feature names
 input_df = pd.DataFrame(input_arry, columns=feature_names)
@@ -262,10 +258,12 @@ if predict:
 
             # Display average cost for two
             st.markdown(f"**Average Cost for Two:** {row['Average Cost for Two']}")
+            
+
 
             # Display URL
-            if 'URL' in row and pd.notna(row['URL']):
-                st.markdown(f"[Visit Website]({row['URL']})", unsafe_allow_html=True)
+            
+            st.markdown(f"[Visit Website]({row['Url']})", unsafe_allow_html=True)
             
             
                 

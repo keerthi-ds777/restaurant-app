@@ -1,59 +1,54 @@
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 import streamlit as st
-import google.generativeai as genai
 
-# Load environment variables
+from langchain_groq import ChatGroq
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationChain
+from langchain.schema import HumanMessage, AIMessage
+
 load_dotenv()
+groq_key = os.getenv("GROQ_API_KEY")
+if not groq_key:
+        st.error("🔑 Please set GROQ_API_KEY in .env")
+        st.stop()
 
-st.set_page_config(
-    page_title="BiteFinder - Chatbot",
-    page_icon="🤖",
-    layout="wide"
-)
-# Get the API key from the environment variable
-api_key = os.getenv("GOOGLE_GENAI_API_KEY")
-if not api_key:
-    st.error("🔐 API key missing! Create a `.env` file with `GOOGLE_GENAI_API_KEY`")
-    st.stop()  # Halt app if no key
+st.set_page_config(page_title="Cooking Guide Chatbot", page_icon="🍳", layout="wide")
+st.title("🍲 ChefGroq — Your Cooking Assistant")
 
-# Configure the Google Generative AI client
-genai.configure(api_key=api_key)
+    # Initialize the Groq chat model via LangChain
+llm = ChatGroq(
+        model="llama-3.1-8b-instant",  # or whichever model you prefer
+        temperature=0.7,
+        api_key=groq_key    )
 
-def get_chat_response(prompt):
-    """Get AI response with error handling using Google Generative AI"""
-    try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"⚠️ Error: {str(e)}"
+    # Use memory to retain conversation
+if "memory" not in st.session_state:
+        st.session_state.memory = ConversationBufferMemory(return_messages=True)
 
-def chatbot_page():
-    st.title("💬 Chatbot Page")
-    st.markdown("Ask the BiteFinder Bot anything!")
+if "conversation" not in st.session_state:
+        st.session_state.conversation = ConversationChain(
+            llm=llm,
+            memory=st.session_state.memory
+        )
 
-    # Initialize chat
-    if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Ask me about restaurent or recipe ?"}]
+    # Input from user
 
-    # Display chat history
-    for msg in st.session_state.messages:
-        st.chat_message(msg["role"]).write(msg["content"])
+    
+    # Display conversation history
+st.markdown("### Conversation")
+for msg in st.session_state.memory.chat_memory.messages:
+        if isinstance(msg, HumanMessage):
+            st.markdown(f"**You:** {msg.content}")
+        else:
+            st.markdown(f"**ChefGroq:** {msg.content}")
+        st.markdown("---")
 
-    # Handle user input
-    if prompt := st.chat_input("Type your question here..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        try:
-            with st.spinner("🧠 Thinking..."):
-                response = get_chat_response(prompt)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-        except Exception as e:
-            st.error(f"API Error: {str(e)}")
-            st.session_state.messages.append({"role": "assistant", "content": "⚠️ Sorry, I encountered an error."})
-        st.rerun()
-
-
-
-chatbot_page()
+    # Input from user at the bottom
+user_input = st.chat_input("Ask me about cooking, recipes, tips…")
+if user_input:
+        with st.spinner("Thinking …"):
+            response = st.session_state.conversation.run(user_input)
+            st.session_state.memory.chat_memory.add_message(HumanMessage(content=user_input))
+            st.session_state.memory.chat_memory.add_message(AIMessage(content=response))
 

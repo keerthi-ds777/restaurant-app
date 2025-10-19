@@ -116,7 +116,7 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 .pyre/
-
+rough.ipynb
 # === Lint / Formatter ===
 .cache/
 .prettiercache
