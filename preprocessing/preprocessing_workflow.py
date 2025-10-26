@@ -135,17 +135,23 @@ class Workflow:
         else:
             print("Error: Scaled data is not available. Please ensure preprocessing is completed successfully.")
     
-    def main(self,n_cluster:int=4,return_score=False,model_save=False,sql_save=False):
+    def main(self,n_cluster:int=20,return_score=False,model_save=False,sql_save=False):
         self.data_load()  # Replace 1 and 10 with appropriate values
         self.preprocess()
-        model=self.fit_model(n_clusters=n_cluster, return_score=return_score,model_save=model_save)
+        if return_score==True:
+            model, score=self.fit_model(n_clusters=n_cluster, return_score=return_score,model_save=model_save)
+            print(f'Silhouette Score: {score}')
+            return model, score
+        else:
+            model=self.fit_model(n_clusters=n_cluster, return_score=return_score,model_save=model_save)
+            return model
         if sql_save==True:
             self.save_to_sql()
-        return model
+        
 
 if __name__ == "__main__":
     workflow = Workflow()
-    model=workflow.main(n_cluster=4,return_score=False,model_save=False,sql_save=True)
+    model=workflow.main(n_cluster=20,return_score=True,model_save=True,sql_save=True)
     print("Preprocessing workflow completed.")
             #or
     """workflow=Workflow()
