@@ -10,3 +10,10 @@ matplotlib
 numpy
 streamlit
 streamlit-folium
+numpy
+webbrowser
+
+
+dfd = pd.read_csv('/Users/lravi/Documents/Github/restaurant-app/data/scaled.csv')
+df = pd.read_csv('/Users/lravi/Documents/Github/restaurant-app/data/scaled.csv')
+dfc = pd.read_csv('/Users/lravi/Documents/Github/restaurant-app/data/restaurant_data.csv')

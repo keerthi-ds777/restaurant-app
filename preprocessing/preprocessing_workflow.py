@@ -4,23 +4,13 @@ import pandas as pd
 from sqlalchemy import create_engine
 import os
 from dotenv import load_dotenv
-load_dotenv()
+#load_dotenv()
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import LabelEncoder
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
 
-engine = create_engine(
-    
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    
-    )
 
 
 class Workflow:
@@ -38,7 +28,7 @@ class Workflow:
         # Be aware of the names of the files should be number ranging from n and m
         for i in range(n,m):
             # Load JSON file
-            with open(r'C:\Users\loges\Documents\GitHub\restaurant-app\data\file{}.json'.format(i), "r", encoding="utf-8") as file:
+            with open(r'/Users/lravi/Documents/Github/restaurant-app/data/file{}.json'.format(i), "r", encoding="utf-8") as file:
                 data = json.load(file)
 
             # Extract relevant information
@@ -109,7 +99,6 @@ class Workflow:
             raise ValueError("Scaled data is not available. Please ensure 'preprocess' is called successfully before fitting the model.")
         labels = kmeans.fit_predict(self.scaled)
         score = silhouette_score(self.scaled, labels)
-        self.scaled['Cluster'] = labels
         
         print(f'KMeans model with {n_clusters} clusters fitted and saved to sql database')
         if return_score==True:
@@ -118,35 +107,33 @@ class Workflow:
          return kmeans
         if model_save==True:
             import joblib
-            joblib.dump(kmeans, r'C:\Users\loges\Documents\GitHub\restaurant-app\model\kmeans_model.pkl')    
+            joblib.dump(kmeans, r'/Users/lravi/Documents/Github/restaurant-app/data/kmeans_model.pkl')    
 
 
-    def save_to_sql(self,Engine=engine):
+    def save_to_sql(self):#,Engine=engine):
         if self.df is not None:
-          self.df.to_sql('Restaurent Table', con=Engine, if_exists='replace', index=False)
-        else:
-            print("Error: Original data is not available. Please ensure data loading is completed successfully.")
+            self.df.to_csv('/Users/lravi/Documents/Github/restaurant-app/data/restaurent_table.csv', index=False)
         if self.features is not None:
-          self.features.to_sql('features_for_clustering', con=Engine, if_exists='replace', index=False)
-        else:
-            print("Error: Features data is not available. Please ensure preprocessing is completed successfully.")
+            self.features.to_csv('/Users/lravi/Documents/Github/restaurant-app/data/features_for_clustering.csv', index=False)
         if self.scaled is not None:
-            self.scaled.to_sql('clustered_data', con=Engine, if_exists='replace', index=False)
-        else:
-            print("Error: Scaled data is not available. Please ensure preprocessing is completed successfully.")
+            self.scaled.to_csv('/Users/lravi/Documents/Github/restaurant-app/data/clustered_data.csv', index=False)
+        print('DataFrames are successfully saved to sql database')
     
     def main(self,n_cluster:int=20,return_score=False,model_save=False,sql_save=False):
         self.data_load()  # Replace 1 and 10 with appropriate values
         self.preprocess()
-        if return_score==True:
-            model, score=self.fit_model(n_clusters=n_cluster, return_score=return_score,model_save=model_save)
-            print(f'Silhouette Score: {score}')
-            return model, score
+        result = self.fit_model(n_clusters=n_cluster, return_score=return_score,model_save=model_save)
+        if return_score:
+            if isinstance(result, tuple):
+                model, score = result
+                print(f'Silhouette Score: {score}')
+                if sql_save:
+                    self.save_to_sql()
+                return model, score
         else:
-            model=self.fit_model(n_clusters=n_cluster, return_score=return_score,model_save=model_save)
-            return model
-        if sql_save==True:
-            self.save_to_sql()
+            if sql_save:
+                self.save_to_sql()
+            return result
         
 
 if __name__ == "__main__":
