@@ -1,17 +1,23 @@
 import json
 import pandas as pd
-
+import pymysql
 from sqlalchemy import create_engine
 import os
 from dotenv import load_dotenv
-#load_dotenv()
+load_dotenv()
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import LabelEncoder
+import boto3
+USER=os.getenv('DB_USER')
+PASSWORD=os.getenv('DB_PASSWORD')
+HOST=os.getenv('DB_HOST')
+DB_PORT=os.getenv('DB_PORT')
+DB_NAME=os.getenv('DB_NAME')
 
 
-
+engine= create_engine(f'mysql+pymysql://{USER}:{PASSWORD}@{HOST}:{DB_PORT}/{DB_NAME}')
 
 class Workflow:
 
@@ -22,14 +28,26 @@ class Workflow:
         self.scaled = None
     
     def data_load(self,n:int=1,m: int=6):
+        AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+
         
+        # Connect to S3
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            region_name='ap-south-2'
+            )
         restaurants = []
         # Loop through the range of number of files 
         # Be aware of the names of the files should be number ranging from n and m
         for i in range(n,m):
             # Load JSON file
-            with open(r'/Users/lravi/Documents/Github/restaurant-app/data/file{}.json'.format(i), "r", encoding="utf-8") as file:
-                data = json.load(file)
+
+            response = s3.get_object(Bucket='amzn-res-bucket', Key=f'file{i}.json')
+            data = json.loads(response['Body'].read().decode('utf-8'))
+            
 
             # Extract relevant information
             for item in data:  # data is a list, so iterate directly
@@ -56,7 +74,7 @@ class Workflow:
                         })
         # Convert to DataFrame
         self.df = pd.DataFrame(restaurants)
-        features = ['City','Rating', 'Votes',
+        features = ['City','Cuisines','Rating', 'Votes',
                     'Price Range','Online Delivery',
                     'Table Booking', 'Average Cost for Two']  # adjust as needed
         
@@ -98,6 +116,7 @@ class Workflow:
         if self.scaled is None:
             raise ValueError("Scaled data is not available. Please ensure 'preprocess' is called successfully before fitting the model.")
         labels = kmeans.fit_predict(self.scaled)
+        self.features['Cluster'] = labels
         score = silhouette_score(self.scaled, labels)
         
         print(f'KMeans model with {n_clusters} clusters fitted and saved to sql database')
@@ -107,16 +126,15 @@ class Workflow:
          return kmeans
         if model_save==True:
             import joblib
-            joblib.dump(kmeans, r'/Users/lravi/Documents/Github/restaurant-app/data/kmeans_model.pkl')    
+            joblib.dump(kmeans, r'/Users/lravi/Documents/Github/restaurant-app/model/cluster_model.pkl')    
 
 
     def save_to_sql(self):#,Engine=engine):
         if self.df is not None:
-            self.df.to_csv('/Users/lravi/Documents/Github/restaurant-app/data/restaurent_table.csv', index=False)
+            self.df.to_sql('Restaurant_data', con=engine, if_exists='replace', index=False)
         if self.features is not None:
-            self.features.to_csv('/Users/lravi/Documents/Github/restaurant-app/data/features_for_clustering.csv', index=False)
-        if self.scaled is not None:
-            self.scaled.to_csv('/Users/lravi/Documents/Github/restaurant-app/data/clustered_data.csv', index=False)
+            self.features.to_sql('Features_data', con=engine, if_exists='replace', index=False)
+
         print('DataFrames are successfully saved to sql database')
     
     def main(self,n_cluster:int=20,return_score=False,model_save=False,sql_save=False):

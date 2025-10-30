@@ -1,31 +1,39 @@
-import streamlit as st
+import pymysql
 import pandas as pd
-import streamlit as st
-import pandas as pd
-#from dotenv import load_dotenv
-import os
-#from map import map_page
 import joblib
 import webbrowser
 import numpy as np
-
+import pickle
 import folium
 from streamlit_folium import st_folium
-#from dotenv import load_dotenv
-import os
-from sqlalchemy import create_engine
 import streamlit as st
-#from map import map_page
+np.set_printoptions(suppress=True, precision=3)
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
+import os
 
+# Load environment variables
+load_dotenv()
+
+# Get database configuration with fallbacks
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+
+# Create connection URL with error handling
+engine = create_engine(
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+
+dfc=pd.read_sql('SELECT * FROM restaurant_data', con=engine)
+df=pd.read_sql('SELECT * FROM features', con=engine)
 # Initialize session state for page navigation
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
 
-
-dfd = pd.read_csv('/Users/lravi/Documents/Github/restaurant-app/data/scaled.csv')
-df = pd.read_csv('/Users/lravi/Documents/Github/restaurant-app/data/scaled.csv')
-dfc = pd.read_csv('/Users/lravi/Documents/Github/restaurant-app/data/restaurant_data.csv')
 
 # Set page configuration
 
@@ -35,13 +43,13 @@ st.set_page_config(
     layout="wide"
 )
 
+dfc['Cluster'] = df['Cluster']
 
-
-dfc['Clusters'] = dfd['Cluster']
 
 cusine_dic = {}
 city_dic = {}
 rating_dic = {}
+votes_dic = {}
 price_range_dic	= {}
 online_delivery_dic={}
 tabel_booking_dic={}
@@ -49,7 +57,7 @@ avg_cost_two_dic ={}
 
 cusine_list = list(dfc['Cuisines'].unique())
 city_list = list(dfc['City'].unique())
-rating_list = list(dfc['Rating_text'].unique())
+rating_list = list(dfc['Rating'].unique())
 online_delivery_list = list(dfc['Online Delivery'].unique())
 tabel_booking_list = list(dfc['Table Booking'].unique())
 
@@ -69,7 +77,7 @@ for i, j in zip(dfc['Online Delivery'], df['Online Delivery']):
 
 
 
-for i, j in zip(dfc.Rating_text, df.Rating_text):
+for i, j in zip(dfc.Rating, df.Rating):
    city = {f"{i}": j}
    rating_dic.update(city)
 
@@ -119,7 +127,7 @@ def model_loader(path):
 
 #loading both models 
 with st.spinner("Hold on, the app is loading..."):
-    model = model_loader(r"data/cluster_model.pkl")
+    model = model_loader(r"/Users/lravi/Documents/Github/restaurant-app/model/cluster_model.pkl")
 
 # Sidebar Filters
 st.sidebar.image("https://b.zmtcdn.com/data/pictures/chains/2/308322/348dfe37e84fba7f22131948a62d8519.jpg?output-format=webp&fit=around|771.75:416.25&crop=771.75:416.25;*,*",
@@ -142,8 +150,9 @@ location_v= location
 location = city_dic[location]
 
 rating = st.sidebar.selectbox("⭐ Kind of rating would you prefer", options=rating_list)
-rating_v = rating
-rating = rating_dic[rating]
+rating = rating_dic[str(rating)]
+
+votes= st.sidebar.number_input("🗳️ Minimum Number of Votes", min_value=0, step=1, help="Select the minimum number of votes")
 
 price_range = st.sidebar.slider(
     "💰 Price Range", 
@@ -158,6 +167,7 @@ online_delivery = online_delivery_dic[online_delivery]
 
 tabel_booking = st.sidebar.selectbox("select if the restaurent has Table Booking", options=tabel_booking_list, help="Select if you want table booking")
 tabel_v = tabel_booking
+rating_v = rating
 tabel_booking = tabel_booking_dic[tabel_booking]
 
 avg_cost_two = st.sidebar.number_input("select the average cost for two", help="Select the average cost for two")
@@ -168,18 +178,21 @@ price_range_value = sum(price_range) / len(price_range)  # Calculate the average
 
 # Create the input array with consistent numeric values
 input_arry = np.array([
-    cusine, location, rating, price_range_value, online_delivery, tabel_booking, avg_cost_two
+     location,cusine, rating, votes ,price_range_value, online_delivery, tabel_booking, avg_cost_two
 ], dtype=float)  # Ensure all elements are numeric
 input_arry = input_arry.reshape(1, -1)
 # Assuming the model was trained with these feature names
-feature_names = ['Cuisines', 'City', 'Rating_text', 'Price Range', 
+feature_names = ['City', 'Cuisines', 'Rating', 'Votes','Price Range', 
                  'Online Delivery', 'Table Booking', 'Average Cost for Two']
-
+with open('/Users/lravi/Documents/Github/restaurant-app/model/scaler.pkl', 'rb') as f:
+    scaler = pickle.load(f)
+input_arry = scaler.transform(input_arry)
 # Convert input_arry to a DataFrame with feature names
 input_df = pd.DataFrame(input_arry, columns=feature_names)
 
-# Predict the cluster
-cluster = model.predict(input_df)
+
+# Initialize counter for restaurants
+k = 0
 
 # Predict button
 predict = st.sidebar.button('Predict')
@@ -187,16 +200,17 @@ dfc['Latitude'] = pd.to_numeric(dfc['Latitude'], errors='coerce')
 dfc['Longitude'] = pd.to_numeric(dfc['Longitude'], errors='coerce')
 if predict:
     # Predicting the cluster
-    cluster = model.predict(input_arry)
+    cluster = model.predict(input_df)[0]
 
     # Filter the cluster data
-    cluster_df = dfc[dfc['Clusters'] == cluster[0]]  # Ensure 'Clusters' column is used correctly
+    cluster_df = dfc[dfc['Cluster'] == cluster]  # Ensure 'Clusters' column is used correctly
 
     # Apply additional filters
     new_df = cluster_df[
         (cluster_df['Cuisines'] == cusine_v) &
         (cluster_df['City'] == location_v) &
-        (cluster_df['Rating_text'] == rating_v) &
+        (cluster_df['Rating'] == rating_v) &
+        (cluster_df['Votes'] >= votes) &
         (cluster_df['Price Range'] == price_range_value) &
         (cluster_df['Online Delivery'] == online_delivery_v) &
         (cluster_df['Table Booking'] == tabel_v) &
@@ -216,6 +230,7 @@ if predict:
     st.write("BiteFinder | A Personalized Dining Guide | Location Guidence")
     
     st.markdown("### 🎉 Recommended Restaurants")
+    k=0
     for idx, row in new_df.iterrows():
         with st.container():
             # Display restaurant name
@@ -223,7 +238,7 @@ if predict:
 
             # Display photo
             if 'Photo_urls' in row and pd.notna(row['Photo_urls']):
-                st.image(row['Photo_urls'], width=300)
+               st.image(row['Photo_urls'], width=300)
 
             # Display location
             st.markdown(f"**Location:** {row['Address']}")
@@ -232,7 +247,7 @@ if predict:
             st.markdown(f"**Cuisine:** {row['Cuisines']}")
 
             # Display rating
-            st.markdown(f"**Rating:** {row['Rating_text']}")
+            st.markdown(f"**Rating:** {row['Rating']}")
 
             # Display price range
             st.markdown(f"**Price Range:** {row['Price Range']}")
@@ -243,10 +258,10 @@ if predict:
 
             # Display average cost for two
             st.markdown(f"**Average Cost for Two:** {row['Average Cost for Two']}")
-
+            k+=1
             # Display URL
-            if 'URL' in row and pd.notna(row['URL']):
-                st.markdown(f"[Visit Website]({row['URL']})", unsafe_allow_html=True)
+            if 'Url' in row and pd.notna(row['Url']):
+                st.markdown(f"[Visit Website]({row['Url']})", unsafe_allow_html=True)
             
             
                 
@@ -254,16 +269,15 @@ if predict:
     
 
 
-
+    st.write('Total number of restaurants found:', k)
     st.markdown("### Recommended Restaurants")
     
 # Display the filtered DataFrame
 
     # Main Section
+
 st.markdown("<h1 style='text-align: center; color: #FF5733;'>BiteFinder: Real-Time & Static Restaurant Recommendations</h1>", unsafe_allow_html=True)
 
 st.markdown("#### Explore the best dining options tailored to your preferences!")
 
 st.write("BiteFinder | A Personalized Dining Guide | Location Guidence")
-
-

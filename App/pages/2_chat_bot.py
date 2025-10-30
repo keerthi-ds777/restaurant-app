@@ -1,54 +1,45 @@
-import os
-from dotenv import load_dotenv
 import streamlit as st
+from dotenv import load_dotenv
+import os
+from groq import Groq
 
-from langchain_groq import ChatGroq
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationChain
-from langchain.schema import HumanMessage, AIMessage
-
+# Load the GROQ_API_KEY from .env file
 load_dotenv()
-groq_key = os.getenv("GROQ_API_KEY")
-if not groq_key:
-        st.error("🔑 Please set GROQ_API_KEY in .env")
-        st.stop()
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-st.set_page_config(page_title="Cooking Guide Chatbot", page_icon="🍳", layout="wide")
-st.title("🍲 ChefGroq — Your Cooking Assistant")
+# Streamlit setup
+st.set_page_config(page_title="Groq Chatbot ⚡", page_icon="🤖")
+st.title("🤖 Simple Chatbot (Powered by Groq)")
 
-    # Initialize the Groq chat model via LangChain
-llm = ChatGroq(
-        model="llama-3.1-8b-instant",  # or whichever model you prefer
-        temperature=0.7,
-        api_key=groq_key    )
+# Initialize session state for chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Hey there! I'm your Groq-powered chatbot. How can I help you today?"}
+    ]
 
-    # Use memory to retain conversation
-if "memory" not in st.session_state:
-        st.session_state.memory = ConversationBufferMemory(return_messages=True)
+# Display chat history
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-if "conversation" not in st.session_state:
-        st.session_state.conversation = ConversationChain(
-            llm=llm,
-            memory=st.session_state.memory
-        )
+# Chat input field
+user_input = st.chat_input("Type your message...")
 
-    # Input from user
-
-    
-    # Display conversation history
-st.markdown("### Conversation")
-for msg in st.session_state.memory.chat_memory.messages:
-        if isinstance(msg, HumanMessage):
-            st.markdown(f"**You:** {msg.content}")
-        else:
-            st.markdown(f"**ChefGroq:** {msg.content}")
-        st.markdown("---")
-
-    # Input from user at the bottom
-user_input = st.chat_input("Ask me about cooking, recipes, tips…")
 if user_input:
-        with st.spinner("Thinking …"):
-            response = st.session_state.conversation.run(user_input)
-            st.session_state.memory.chat_memory.add_message(HumanMessage(content=user_input))
-            st.session_state.memory.chat_memory.add_message(AIMessage(content=response))
+    # Show user message
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
+    # Generate response using Groq model
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-safeguard-20b",  # You can use 'llama3-70b-8192' too
+        messages=st.session_state.messages
+    )
+
+    bot_reply = response.choices[0].message.content
+
+    # Show assistant message
+    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+    with st.chat_message("assistant"):
+        st.markdown(bot_reply)
